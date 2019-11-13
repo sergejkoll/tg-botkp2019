@@ -31,7 +31,7 @@ func main() {
 
 	b.Start()
 
-	b.Handle("/hello", func(m *tb.Message) {
+	b.Handle("/", func(m *tb.Message) {
 		_, err := b.Send(m.Sender, "Hi!")
 		if err != nil {
 			log.Fatal(err)
