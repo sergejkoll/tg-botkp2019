@@ -30,8 +30,11 @@ func main() {
 	}
 
 	b.Start()
-	
+
 	b.Handle("/hello", func(m *tb.Message) {
-		b.Send(m.Sender, "Hi!")
+		_, err := b.Send(m.Sender, "Hi!")
+		if err != nil {
+			log.Fatal(err)
+		}
 	})
 }
