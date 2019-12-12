@@ -94,6 +94,9 @@ func main() {
 				if !status {
 					caseState[update.Message.Chat.ID] = MENU
 				}
+			// Получение одного задания из предложенных
+			} else if caseState[update.Message.Chat.ID] == GOT_ALL_TASK {
+
 			}
 		}
 
@@ -122,6 +125,11 @@ func main() {
 				if err != nil {
 					log.Fatal(err)
 				}
+			case "get_tasks":
+				GetTasks(bot, update.CallbackQuery.Message.Chat.ID)
+				caseState[update.CallbackQuery.Message.Chat.ID] = GOT_ALL_TASK
+			case "update_task":
+
 			}
 		}
 	}

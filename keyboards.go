@@ -6,49 +6,49 @@ import (
 
 var startKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("вход", "login"),
-		tgbotapi.NewInlineKeyboardButtonData("регистрация", "signup"),
+		tgbotapi.NewInlineKeyboardButtonData("Вход", "login"),
+		tgbotapi.NewInlineKeyboardButtonData("Регистрация", "signup"),
 	),
 )
 
 var mainMenuKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("пользователь", "user"),
-		tgbotapi.NewInlineKeyboardButtonData("задачи", "task"),
+		tgbotapi.NewInlineKeyboardButtonData("Пользователь", "user"),
+		tgbotapi.NewInlineKeyboardButtonData("Задачи", "task"),
 	),
 	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("группы", "group"),
-		tgbotapi.NewInlineKeyboardButtonData("интервалы", "scope"),
+		tgbotapi.NewInlineKeyboardButtonData("Группы", "group"),
+		tgbotapi.NewInlineKeyboardButtonData("Интервалы", "scope"),
 	),
 )
 
 var taskMenuKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("создать задачу", "create_task"),
-		tgbotapi.NewInlineKeyboardButtonData("показать задачи", "get_tasks"),
+		tgbotapi.NewInlineKeyboardButtonData("Создать задачу", "create_task"),
+		tgbotapi.NewInlineKeyboardButtonData("Показать задачи", "get_tasks"),
 	),
 	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("обновить задачу", "update_task"),
-		tgbotapi.NewInlineKeyboardButtonData("чеклисты", "checklist"),
+		tgbotapi.NewInlineKeyboardButtonData("Обновить задачу", "update_task"),
+		tgbotapi.NewInlineKeyboardButtonData("Чеклисты", "checklist"),
 	),
 	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("треки", "track"),
-		tgbotapi.NewInlineKeyboardButtonData("меню", "menu"),
+		tgbotapi.NewInlineKeyboardButtonData("Треки", "track"),
+		tgbotapi.NewInlineKeyboardButtonData("Меню", "menu"),
 	),
 )
 
 var createTaskMenuKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("обновить задачу", "update_task"),
+		tgbotapi.NewInlineKeyboardButtonData("Обновить задачу", "update_task"),
 	),
 	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("добавить чеклист", "checklist"),
+		tgbotapi.NewInlineKeyboardButtonData("Добавить чеклист", "checklist"),
 	),
 	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("добавить задачу в группу", "add_task_in_group"),
+		tgbotapi.NewInlineKeyboardButtonData("Добавить задачу в группу", "add_task_in_group"),
 	),
 	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("меню", "menu"),
+		tgbotapi.NewInlineKeyboardButtonData("Меню", "menu"),
 	),
 )
 

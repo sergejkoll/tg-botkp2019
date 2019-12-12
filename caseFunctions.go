@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"tg-botkp2019/models"
+	"github.com/tg-botkp2019/models"
 )
 
 var userArray []models.User
@@ -31,7 +31,7 @@ func getUserIdAndAddInArrayCase(bot *tgbotapi.BotAPI, id int64) {
 	msg := tgbotapi.NewMessage(id, "Введите почту")
 	_, err := bot.Send(msg)
 	if err != nil {
-		log.Fatal(err)
+		_, _ = bot.Send(tgbotapi.NewMessage(id, "Бот сломался, перезапустите его"))
 	}
 }
 
@@ -49,7 +49,7 @@ func getEmailCase(bot *tgbotapi.BotAPI, id int64, email string) {
 	msg := tgbotapi.NewMessage(id, "Введите логин")
 	_, err := bot.Send(msg)
 	if err != nil {
-		log.Fatal(err)
+		_, _ = bot.Send(tgbotapi.NewMessage(id, "Бот сломался, перезапустите его"))
 	}
 }
 
@@ -67,7 +67,7 @@ func getLoginCase(bot *tgbotapi.BotAPI, id int64, login string) {
 	msg := tgbotapi.NewMessage(id, "Введите пароль")
 	_, err := bot.Send(msg)
 	if err != nil {
-		log.Fatal(err)
+		_, _ = bot.Send(tgbotapi.NewMessage(id, "Бот сломался, перезапустите его"))
 	}
 }
 
@@ -171,8 +171,8 @@ func getPasswordAndLogin(bot *tgbotapi.BotAPI, id int64, password string) (statu
 	}
 
 	tokens := models.Tokens{
-		Access:access,
-		Refresh:refresh,
+		Access: access,
+		Refresh: refresh,
 	}
 
 	tokensMap[id] = tokens
@@ -313,7 +313,16 @@ func getTaskPriority(bot *tgbotapi.BotAPI, chatId int64, taskPriority string) (s
 	idStr := strconv.Itoa(int(chatId))
 	url := "http://jtdi.ru/" + idStr + "/task/create"
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(body))
-	// Устанвока куки
+	// Установка куки
+	if tokensMap[chatId].Access == nil || tokensMap[chatId].Refresh == nil {
+		msg := tgbotapi.NewMessage(chatId, "Авторизуйтесь!")
+		msg.ReplyMarkup = startKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
 	req.AddCookie(tokensMap[chatId].Access)
 	req.AddCookie(tokensMap[chatId].Refresh)
 
@@ -329,9 +338,13 @@ func getTaskPriority(bot *tgbotapi.BotAPI, chatId int64, taskPriority string) (s
 		log.Fatal(err)
 	}
 
+	var result models.JsonTask
+	json.NewDecoder(bytes.NewBuffer(body)).Decode(&result)
+	taskArray[index].Id = result.Task.Id
+
 
 	if resp.StatusCode == 200 {
-		// Отпарвка сообщения с новой клавиатурой
+		// Отправка сообщения с новой клавиатурой
 		msg := tgbotapi.NewMessage(chatId, "Задача создана")
 		msg.ReplyMarkup = createTaskMenuKeyboard
 		_, err = bot.Send(msg)
@@ -350,5 +363,71 @@ func getTaskPriority(bot *tgbotapi.BotAPI, chatId int64, taskPriority string) (s
 			log.Fatal(err)
 		}
 		return false
+	}
+}
+
+func GetTasks(bot *tgbotapi.BotAPI, chatId int64) {
+	msg := tgbotapi.NewMessage(chatId, "Список всех Ваших задач:")
+	bot.Send(msg)
+
+	idStr := strconv.Itoa(int(chatId))
+	url := "http://jtdi.ru/" + idStr + "/tasks"
+	req, _ := http.NewRequest("GET", url, nil)
+	// Установка куки
+	if tokensMap[chatId].Access == nil || tokensMap[chatId].Refresh == nil {
+		msg := tgbotapi.NewMessage(chatId, "Авторизуйтесь!")
+		msg.ReplyMarkup = startKeyboard
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+	req.AddCookie(tokensMap[chatId].Access)
+	req.AddCookie(tokensMap[chatId].Refresh)
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var result models.JsonTasks
+	json.NewDecoder(bytes.NewBuffer(body)).Decode(&result)
+
+	flag := false
+	for _, value := range result.Tasks {
+		flag = true
+		msg = tgbotapi.NewMessage(chatId, "Задача № " + strconv.Itoa(value.Id) + ". " + value.Title + "\n" + value.Description)
+		bot.Send(msg)
+	}
+	if flag {
+		msg = tgbotapi.NewMessage(chatId, "Вы можете более подробно рассмотреть каждую из задач")
+		bot.Send(msg)
+		msg = tgbotapi.NewMessage(chatId, "Для этого необходимо отправить номер желаемой задачи")
+		bot.Send(msg)
+	} else {
+		msg := tgbotapi.NewMessage(chatId, "Похоже у Вас еще нет активных задач")
+		msg.ReplyMarkup = taskMenuKeyboard
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
+
+func AskNewTitle(bot *tgbotapi.BotAPI, chatId string) {
+
+	msg := tgbotapi.NewMessage(id, "Введите новое название задачи")
+	_, err := bot.Send(msg)
+	if err != nil {
+		log.Fatal(err)
 	}
 }
