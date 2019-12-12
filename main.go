@@ -92,11 +92,36 @@ func main() {
 			} else if caseState[update.Message.Chat.ID] == TASK_SEND_PRIORITY {
 				status := getTaskPriority(bot, update.Message.Chat.ID, update.Message.Text)
 				if !status {
-					caseState[update.Message.Chat.ID] = MENU
+					caseState[update.Message.Chat.ID] = TASK_MENU
 				}
 			// Получение одного задания из предложенных
 			} else if caseState[update.Message.Chat.ID] == GOT_ALL_TASK {
-
+				GetTaskById(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = TASK_MENU
+			// Обновление задания
+			} else if caseState[update.Message.Chat.ID] == UPDATE_APPROVED {
+				state := AskNewTitle(bot, update.Message.Chat.ID, update.Message.Text)
+				if state == 1 {
+					caseState[update.Message.Chat.ID] = START
+				} else if state == 2 {
+					caseState[update.Message.Chat.ID] = TASK_MENU
+				} else if state == 3 {
+					caseState[update.Message.Chat.ID] = GOT_TITLE
+				}
+			} else if caseState[update.Message.Chat.ID] == GOT_TITLE {
+				GetNewTaskTitle(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = ASKED_DEADLINE
+			} else if caseState[update.Message.Chat.ID] == ASKED_DEADLINE {
+				GetNewTaskDeadline(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = ASKED_DURATION
+			} else if caseState[update.Message.Chat.ID] == ASKED_DURATION {
+				GetNewTaskDuration(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = ASKED_PRIORITY
+			} else if caseState[update.Message.Chat.ID] == ASKED_PRIORITY {
+				status := GetNewTaskPriority(bot, update.Message.Chat.ID, update.Message.Text)
+				if !status {
+					caseState[update.Message.Chat.ID] = TASK_MENU
+				}
 			}
 		}
 
@@ -129,8 +154,17 @@ func main() {
 				GetTasks(bot, update.CallbackQuery.Message.Chat.ID)
 				caseState[update.CallbackQuery.Message.Chat.ID] = GOT_ALL_TASK
 			case "update_task":
-
+				UpdateTask(bot, update.CallbackQuery.Message.Chat.ID)
+				caseState[update.CallbackQuery.Message.Chat.ID] = UPDATE_APPROVED
+			case "scope":
+				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "Выбирите действие для интервала")
+				msg.ReplyMarkup = taskMenuKeyboard
+				_, err = bot.Send(msg)
+				if err != nil {
+					log.Fatal(err)
+				}
 			}
+
 		}
 	}
 }
