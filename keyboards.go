@@ -97,7 +97,7 @@ var groupMenuKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardButtonData("создать", "create_group"),
 	),
 	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("показать все группы", "get_groups"),
+		tgbotapi.NewInlineKeyboardButtonData("показать группы", "get_groups"),
 	),
 	tgbotapi.NewInlineKeyboardRow(
 		tgbotapi.NewInlineKeyboardButtonData("обновить", "update_group"),
@@ -107,6 +107,15 @@ var groupMenuKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 	),
 	tgbotapi.NewInlineKeyboardRow(
 		tgbotapi.NewInlineKeyboardButtonData("меню", "menu"),
+	),
+)
+
+var groupUpdateKeyboard = tgbotapi.NewInlineKeyboardMarkup(
+	tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData("обновить название", "update_group_title"),
+	),
+	tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData("обновить описание", "update_group_description"),
 	),
 )
 

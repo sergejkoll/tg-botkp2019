@@ -17,6 +17,7 @@ import (
 var userArray []models.User
 var taskArray []models.Task
 var groupArray []models.Group
+var updateGroup models.Group
 
 var (
 	tokensMap = make(map[int64]models.Tokens)
@@ -310,10 +311,12 @@ func getTaskPriority(bot *tgbotapi.BotAPI, chatId int64, taskPriority string) (s
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	// Формирование запроса
 	idStr := strconv.Itoa(int(chatId))
 	url := "http://jtdi.ru/" + idStr + "/task/create"
+	if taskArray[index].GroupId != 0 {
+		url = "http://jtdi.ru/" + idStr + "/group/" + strconv.Itoa(taskArray[index].GroupId) + "/task/create"
+	}
 	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	// Установка куки
 	if tokensMap[chatId].Access == nil || tokensMap[chatId].Refresh == nil {
@@ -1216,7 +1219,13 @@ func getGroupDescriptionAndCreate(bot *tgbotapi.BotAPI,chatId int64, description
 
 	if resp.StatusCode == 200 {
 		// Отправка сообщения с новой клавиатурой
-		msg := tgbotapi.NewMessage(chatId, "Группа создана\nВыберите действие для группы")
+		msg := tgbotapi.NewMessage(chatId, "Группа создана\nНомер группы: " + strconv.Itoa(result.Group.Id) +
+			"\nНазвание группы: " + result.Group.Title + "\nОписание группы: " + result.Group.Description)
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		msg = tgbotapi.NewMessage(chatId, "Выберите действие для группы")
 		msg.ReplyMarkup = groupMenuKeyboard
 		_, err = bot.Send(msg)
 		if err != nil {
@@ -1228,6 +1237,270 @@ func getGroupDescriptionAndCreate(bot *tgbotapi.BotAPI,chatId int64, description
 		_, _ = bot.Send(msg)
 		msg = tgbotapi.NewMessage(chatId, "Эхх не получилось... Попробуйте еще раз!!!")
 		msg.ReplyMarkup = groupCreateKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
+func getIdAndGroupId(bot *tgbotapi.BotAPI,chatId int64) {
+	msg := tgbotapi.NewMessage(chatId, "Введите номер группы")
+	_, err := bot.Send(msg)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func getGroupId(bot *tgbotapi.BotAPI,chatId int64, groupIdStr string) {
+	groupId, err := strconv.Atoi(groupIdStr)
+	if err != nil {
+		log.Println(err)
+	}
+	currentTask := models.Task{
+		CreatorId: int(chatId),
+		GroupId: groupId,
+	}
+	taskArray = append(taskArray, currentTask)
+	msg := tgbotapi.NewMessage(chatId, "Введите название задачи")
+	_, err = bot.Send(msg)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func getGroups(bot *tgbotapi.BotAPI, chatId int64) {
+	msg := tgbotapi.NewMessage(chatId, "Список всех Ваших групп:")
+	bot.Send(msg)
+
+	idStr := strconv.Itoa(int(chatId))
+	url := "http://jtdi.ru/" + idStr + "/groups"
+	req, _ := http.NewRequest("GET", url, nil)
+	// Установка куки
+	if tokensMap[chatId].Access == nil || tokensMap[chatId].Refresh == nil {
+		msg := tgbotapi.NewMessage(chatId, "Авторизуйтесь!")
+		msg.ReplyMarkup = startKeyboard
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+	req.AddCookie(tokensMap[chatId].Access)
+	req.AddCookie(tokensMap[chatId].Refresh)
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var result models.JsonGroups
+	json.NewDecoder(bytes.NewBuffer(body)).Decode(&result)
+
+	flag := false
+	index := 0
+	for i, value := range result.Groups {
+		msg = tgbotapi.NewMessage(chatId, "Группа № " + strconv.Itoa(value.Id) + "\nНазвание: " + value.Title + "\nОписание: " + value.Description)
+		bot.Send(msg)
+		flag = true
+		index = i
+	}
+	if index == 0 {
+		flag = false
+	}
+
+	if !flag {
+		msg := tgbotapi.NewMessage(chatId, "Похоже у Вас еще нет активных групп")
+		msg.ReplyMarkup = taskMenuKeyboard
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		msg = tgbotapi.NewMessage(chatId, "Выберите действие для группы")
+		msg.ReplyMarkup = groupMenuKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
+func deleteGroup(bot *tgbotapi.BotAPI,chatId int64, groupIdStr string) {
+	idStr := strconv.Itoa(int(chatId))
+	url := "http://jtdi.ru/" + idStr + "/group/" + groupIdStr
+	req, _ := http.NewRequest("DELETE", url, nil)
+	// Установка куки
+	if tokensMap[chatId].Access == nil || tokensMap[chatId].Refresh == nil {
+		msg := tgbotapi.NewMessage(chatId, "Авторизуйтесь!")
+		msg.ReplyMarkup = startKeyboard
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+	req.AddCookie(tokensMap[chatId].Access)
+	req.AddCookie(tokensMap[chatId].Refresh)
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if resp.StatusCode == 200 {
+		msg := tgbotapi.NewMessage(chatId, "Группа удалена")
+		msg.ReplyMarkup = groupMenuKeyboard
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		msg := tgbotapi.NewMessage(chatId, "Эхх не получилось... Попробуйте еще раз!!!")
+		msg.ReplyMarkup = groupMenuKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
+func getUpdateGroupId(bot *tgbotapi.BotAPI, chatId int64, groupIdStr string) {
+	groupId, err := strconv.Atoi(groupIdStr)
+	if err != nil {
+		log.Println(err)
+	}
+	for _, group := range groupArray {
+		if group.Id == groupId {
+			if updateGroup.Description == "" {
+				updateGroup.Description = group.Description
+			}
+		}
+	}
+	updateGroup.Id = groupId
+	msg := tgbotapi.NewMessage(chatId, "Введетие новое название")
+	bot.Send(msg)
+}
+
+
+func updateGroupTitle(bot *tgbotapi.BotAPI, chatId int64, title string) {
+	updateGroup.Title = title
+	// Формирование запроса
+	body, err := json.Marshal(updateGroup)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Формирование запроса
+	idStr := strconv.Itoa(int(chatId))
+	groupIdStr := strconv.Itoa(updateGroup.Id)
+	url := "http://jtdi.ru/" + idStr + "/group/" + groupIdStr
+	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(body))
+	// Установка куки
+	if tokensMap[chatId].Access == nil || tokensMap[chatId].Refresh == nil {
+		msg := tgbotapi.NewMessage(chatId, "Авторизуйтесь!")
+		msg.ReplyMarkup = startKeyboard
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+	req.AddCookie(tokensMap[chatId].Access)
+	req.AddCookie(tokensMap[chatId].Refresh)
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if resp.StatusCode == 200 {
+		msg := tgbotapi.NewMessage(chatId, "Название обновлено")
+		msg.ReplyMarkup = groupMenuKeyboard
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		msg := tgbotapi.NewMessage(chatId, "Эхх не получилось... Попробуйте еще раз!!!")
+		msg.ReplyMarkup = groupMenuKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
+func getUpdateDescGroup(bot *tgbotapi.BotAPI, chatId int64, groupIdStr string) {
+	groupId, err := strconv.Atoi(groupIdStr)
+	if err != nil {
+		log.Println(err)
+	}
+
+	for _, group := range groupArray {
+		if group.Id == groupId {
+			if updateGroup.Title == "" {
+				updateGroup.Title = group.Title
+			}
+		}
+	}
+
+	updateGroup.Id = groupId
+	msg := tgbotapi.NewMessage(chatId, "Введетие новое описание")
+	bot.Send(msg)
+}
+
+func updateGroupDesc(bot *tgbotapi.BotAPI, chatId int64, desc string) {
+	updateGroup.Description = desc
+	// Формирование запроса
+	body, err := json.Marshal(updateGroup)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Формирование запроса
+	idStr := strconv.Itoa(int(chatId))
+	groupIdStr := strconv.Itoa(updateGroup.Id)
+	url := "http://jtdi.ru/" + idStr + "/group/" + groupIdStr
+	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(body))
+	// Установка куки
+	if tokensMap[chatId].Access == nil || tokensMap[chatId].Refresh == nil {
+		msg := tgbotapi.NewMessage(chatId, "Авторизуйтесь!")
+		msg.ReplyMarkup = startKeyboard
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+	req.AddCookie(tokensMap[chatId].Access)
+	req.AddCookie(tokensMap[chatId].Refresh)
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if resp.StatusCode == 200 {
+		msg := tgbotapi.NewMessage(chatId, "Описание обновлено")
+		msg.ReplyMarkup = groupMenuKeyboard
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		msg := tgbotapi.NewMessage(chatId, "Эхх не получилось... Попробуйте еще раз!!!")
+		msg.ReplyMarkup = groupMenuKeyboard
 		_, err = bot.Send(msg)
 		if err != nil {
 			log.Fatal(err)

@@ -142,8 +142,31 @@ func main() {
 			} else if caseState[update.Message.Chat.ID] == GROUP_SEND_TITLE {
 				getGroupTitle(bot, update.Message.Chat.ID, update.Message.Text)
 				caseState[update.Message.Chat.ID] = GROUP_SEND_DESCRIPTION
+			//	Получение описания группы и отправка запроса на сервер
 			} else if caseState[update.Message.Chat.ID] == GROUP_SEND_DESCRIPTION {
 				getGroupDescriptionAndCreate(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = GROUP_MENU
+			//	Получение group_id и отправка сообщения о названии задачи
+			} else if caseState[update.Message.Chat.ID] == GROUP_SEND_ID {
+				getGroupId(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = TASK_SEND_TITLE
+			//	Получение group_id и удаление группы
+			} else if caseState[update.Message.Chat.ID] == GROUP_DELETE {
+				deleteGroup(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = GROUP_MENU
+			//	Получение group_id и отправка нового сообщения
+			} else if caseState[update.Message.Chat.ID] == GROUP_SEND_NEW_ID {
+				getUpdateGroupId(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = GROUP_SEND_NEW_TITLE
+			//	Полуяение нового названия и обновление
+			} else if caseState[update.Message.Chat.ID] == GROUP_SEND_NEW_TITLE {
+				updateGroupTitle(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = GROUP_MENU
+			} else if caseState[update.Message.Chat.ID] == GROUP_SEND_DESC_ID {
+				getUpdateDescGroup(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = GROUP_SEND_NEW_DESC
+			} else if caseState[update.Message.Chat.ID] == GROUP_SEND_NEW_DESC {
+				updateGroupDesc(bot, update.Message.Chat.ID, update.Message.Text)
 				caseState[update.Message.Chat.ID] = GROUP_MENU
 			}
 		}
@@ -236,8 +259,30 @@ func main() {
 			case "create_groups":
 				getIdAndGroupTitle(bot, update.CallbackQuery.Message.Chat.ID)
 				caseState[update.CallbackQuery.Message.Chat.ID] = GROUP_SEND_TITLE
+			case "create_task_group":
+				getIdAndGroupId(bot, update.CallbackQuery.Message.Chat.ID)
+				caseState[update.CallbackQuery.Message.Chat.ID] = GROUP_SEND_ID
+			case "get_groups":
+				getGroups(bot, update.CallbackQuery.Message.Chat.ID)
+				caseState[update.CallbackQuery.Message.Chat.ID] = GROUP_MENU
+			case "delete_group":
+				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID,
+					"Внимание при удаление группы будут удалены все задачи связанные с группой")
+				bot.Send(msg)
+				getIdAndGroupId(bot, update.CallbackQuery.Message.Chat.ID)
+				caseState[update.CallbackQuery.Message.Chat.ID] = GROUP_DELETE
+			case "update_group":
+				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID,
+					"Выберите что Вы хотите обновить в группе")
+				msg.ReplyMarkup = groupUpdateKeyboard
+				bot.Send(msg)
+			case "update_group_title":
+				getIdAndGroupId(bot, update.CallbackQuery.Message.Chat.ID)
+				caseState[update.CallbackQuery.Message.Chat.ID] = GROUP_SEND_NEW_ID
+			case "update_group_description":
+				getIdAndGroupId(bot, update.CallbackQuery.Message.Chat.ID)
+				caseState[update.CallbackQuery.Message.Chat.ID] = GROUP_SEND_DESC_ID
 			}
-
 		}
 	}
 }
