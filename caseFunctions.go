@@ -16,6 +16,7 @@ import (
 
 var userArray []models.User
 var taskArray []models.Task
+var groupArray []models.Group
 
 var (
 	tokensMap = make(map[int64]models.Tokens)
@@ -62,6 +63,7 @@ func getLoginCase(bot *tgbotapi.BotAPI, id int64, login string) {
 			break
 		}
 	}
+	userArray[index].Fullname = login
 	userArray[index].Login = login
 	// Отправка сообщения
 	msg := tgbotapi.NewMessage(id, "Введите пароль")
@@ -422,12 +424,483 @@ func GetTasks(bot *tgbotapi.BotAPI, chatId int64) {
 	}
 }
 
+//func AskNewTitle(bot *tgbotapi.BotAPI, chatId string) {
+//
+//	msg := tgbotapi.NewMessage(id, "Введите новое название задачи")
+//	_, err := bot.Send(msg)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//}
 
-func AskNewTitle(bot *tgbotapi.BotAPI, chatId string) {
+//
+// USER
+//
+func GetUser(bot *tgbotapi.BotAPI, chatId int64) (status bool) {
+	// Формирование запроса
+	idStr := strconv.Itoa(int(chatId))
+	url := "http://jtdi.ru/user/" + idStr
+	req, _ := http.NewRequest("GET", url, nil)
+	// Установка куки
+	if tokensMap[chatId].Access == nil || tokensMap[chatId].Refresh == nil {
+		msg := tgbotapi.NewMessage(chatId, "Авторизуйтесь!")
+		msg.ReplyMarkup = startKeyboard
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+	req.AddCookie(tokensMap[chatId].Access)
+	req.AddCookie(tokensMap[chatId].Refresh)
 
-	msg := tgbotapi.NewMessage(id, "Введите новое название задачи")
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var result models.JsonUserBody
+	json.NewDecoder(bytes.NewBuffer(body)).Decode(&result)
+
+
+	if resp.StatusCode == 200 {
+		msg := tgbotapi.NewMessage(chatId, "Email: " + result.User.Email + "\n Login: " +
+			result.User.Login + "\n" + "Fullname: " + result.User.Fullname)
+		msg.ReplyMarkup = userMenuKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return true
+	} else {
+		msg := tgbotapi.NewMessage(chatId, string(body))
+		_, _ = bot.Send(msg)
+		msg = tgbotapi.NewMessage(chatId, "Эхх не получилось... Попробуйте еще раз!!!")
+		msg.ReplyMarkup = userMenuKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return false
+	}
+}
+
+func DeleteUser(bot *tgbotapi.BotAPI, chatId int64) (status bool){
+	// Формирование запроса
+	idStr := strconv.Itoa(int(chatId))
+	url := "http://jtdi.ru/user/" + idStr
+	req, _ := http.NewRequest("DELETE", url, nil)
+	// Установка куки
+	if tokensMap[chatId].Access == nil || tokensMap[chatId].Refresh == nil {
+		msg := tgbotapi.NewMessage(chatId, "Авторизуйтесь!")
+		msg.ReplyMarkup = startKeyboard
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+	req.AddCookie(tokensMap[chatId].Access)
+	req.AddCookie(tokensMap[chatId].Refresh)
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if resp.StatusCode == 200 {
+		msg := tgbotapi.NewMessage(chatId, "Пользователь удален. Войдите или зарегестрируйтесь")
+		msg.ReplyMarkup = startKeyboard
+		_, _ = bot.Send(msg)
+		return true
+	} else {
+		msg := tgbotapi.NewMessage(chatId, string(body))
+		_, _ = bot.Send(msg)
+		msg = tgbotapi.NewMessage(chatId, "Эхх не получилось... Попробуйте еще раз!!!")
+		msg.ReplyMarkup = userMenuKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return false
+	}
+}
+
+func getNewUserEmail(bot *tgbotapi.BotAPI,chatId int64) {
+	msg := tgbotapi.NewMessage(chatId, "Введите новую почту")
 	_, err := bot.Send(msg)
 	if err != nil {
 		log.Fatal(err)
+	}
+}
+
+func updateEmail(bot *tgbotapi.BotAPI,chatId int64, email string) {
+	// Получение пользователя из массива
+	index := 0
+	for i, usr := range userArray {
+		if usr.Id == int(chatId) {
+			index = i
+			break
+		}
+	}
+	userArray[index].Email = email
+	// Формирование запроса
+	body, err := json.Marshal(userArray[index])
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Формирование запроса
+	idStr := strconv.Itoa(int(chatId))
+	url := "http://jtdi.ru/user/" + idStr
+	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(body))
+	// Установка куки
+	if tokensMap[chatId].Access == nil || tokensMap[chatId].Refresh == nil {
+		msg := tgbotapi.NewMessage(chatId, "Авторизуйтесь!")
+		msg.ReplyMarkup = startKeyboard
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+	req.AddCookie(tokensMap[chatId].Access)
+	req.AddCookie(tokensMap[chatId].Refresh)
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if resp.StatusCode == 200 {
+		msg := tgbotapi.NewMessage(chatId, "Почта обновлена")
+		msg.ReplyMarkup = userMenuKeyboard
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		msg := tgbotapi.NewMessage(chatId, string(body))
+		_, _ = bot.Send(msg)
+		msg = tgbotapi.NewMessage(chatId, "Эхх не получилось... Попробуйте еще раз!!!")
+		msg.ReplyMarkup = userMenuKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
+func getNewUserLogin(bot *tgbotapi.BotAPI,chatId int64) {
+	msg := tgbotapi.NewMessage(chatId, "Введите новый логин")
+	_, err := bot.Send(msg)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func updateLogin(bot *tgbotapi.BotAPI,chatId int64, login string) {
+	// Получение пользователя из массива
+	index := 0
+	for i, usr := range userArray {
+		if usr.Id == int(chatId) {
+			index = i
+			break
+		}
+	}
+	userArray[index].Login = login
+	// Формирование запроса
+	body, err := json.Marshal(userArray[index])
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Формирование запроса
+	idStr := strconv.Itoa(int(chatId))
+	url := "http://jtdi.ru/user/" + idStr
+	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(body))
+	// Установка куки
+	if tokensMap[chatId].Access == nil || tokensMap[chatId].Refresh == nil {
+		msg := tgbotapi.NewMessage(chatId, "Авторизуйтесь!")
+		msg.ReplyMarkup = startKeyboard
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+	req.AddCookie(tokensMap[chatId].Access)
+	req.AddCookie(tokensMap[chatId].Refresh)
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if resp.StatusCode == 200 {
+		msg := tgbotapi.NewMessage(chatId, "Логин обновлен")
+		msg.ReplyMarkup = userMenuKeyboard
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		msg := tgbotapi.NewMessage(chatId, string(body))
+		_, _ = bot.Send(msg)
+		msg = tgbotapi.NewMessage(chatId, "Эхх не получилось... Попробуйте еще раз!!!")
+		msg.ReplyMarkup = userMenuKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
+func getNewUserFullname(bot *tgbotapi.BotAPI,chatId int64) {
+	msg := tgbotapi.NewMessage(chatId, "Введите новое имя")
+	_, err := bot.Send(msg)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func updateFullname(bot *tgbotapi.BotAPI,chatId int64, fullname string) {
+	// Получение пользователя из массива
+	index := 0
+	for i, usr := range userArray {
+		if usr.Id == int(chatId) {
+			index = i
+			break
+		}
+	}
+	userArray[index].Fullname = fullname
+	// Формирование запроса
+	body, err := json.Marshal(userArray[index])
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Формирование запроса
+	idStr := strconv.Itoa(int(chatId))
+	url := "http://jtdi.ru/user/" + idStr
+	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(body))
+	// Установка куки
+	if tokensMap[chatId].Access == nil || tokensMap[chatId].Refresh == nil {
+		msg := tgbotapi.NewMessage(chatId, "Авторизуйтесь!")
+		msg.ReplyMarkup = startKeyboard
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+	req.AddCookie(tokensMap[chatId].Access)
+	req.AddCookie(tokensMap[chatId].Refresh)
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if resp.StatusCode == 200 {
+		msg := tgbotapi.NewMessage(chatId, "Имя обновлено")
+		msg.ReplyMarkup = userMenuKeyboard
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		msg := tgbotapi.NewMessage(chatId, string(body))
+		_, _ = bot.Send(msg)
+		msg = tgbotapi.NewMessage(chatId, "Эхх не получилось... Попробуйте еще раз!!!")
+		msg.ReplyMarkup = userMenuKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
+func getNewUserPass(bot *tgbotapi.BotAPI,chatId int64) {
+	msg := tgbotapi.NewMessage(chatId, "Введите новый пароль")
+	_, err := bot.Send(msg)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func updatePass(bot *tgbotapi.BotAPI,chatId int64, pass string) {
+	// Получение пользователя из массива
+	index := 0
+	for i, usr := range userArray {
+		if usr.Id == int(chatId) {
+			index = i
+			break
+		}
+	}
+	userArray[index].Password = pass
+	// Формирование запроса
+	body, err := json.Marshal(userArray[index])
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Формирование запроса
+	idStr := strconv.Itoa(int(chatId))
+	url := "http://jtdi.ru/user/" + idStr
+	req, _ := http.NewRequest("PUT", url, bytes.NewBuffer(body))
+	// Установка куки
+	if tokensMap[chatId].Access == nil || tokensMap[chatId].Refresh == nil {
+		msg := tgbotapi.NewMessage(chatId, "Авторизуйтесь!")
+		msg.ReplyMarkup = startKeyboard
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+	req.AddCookie(tokensMap[chatId].Access)
+	req.AddCookie(tokensMap[chatId].Refresh)
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if resp.StatusCode == 200 {
+		msg := tgbotapi.NewMessage(chatId, "Пароль обновлен")
+		msg.ReplyMarkup = userMenuKeyboard
+		_, err := bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		msg := tgbotapi.NewMessage(chatId, string(body))
+		_, _ = bot.Send(msg)
+		msg = tgbotapi.NewMessage(chatId, "Эхх не получилось... Попробуйте еще раз!!!")
+		msg.ReplyMarkup = userMenuKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+}
+
+//
+// GROUP
+//
+func getIdAndGroupTitle(bot *tgbotapi.BotAPI, chatId int64) {
+	currentGroup := models.Group{
+		CreatorId: int(chatId),
+	}
+	groupArray = append(groupArray, currentGroup)
+	msg := tgbotapi.NewMessage(chatId, "Введите название группы")
+	_, err := bot.Send(msg)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func getGroupTitle(bot *tgbotapi.BotAPI,chatId int64, title string) {
+	// Получение группы из массива
+	index := 0
+	for i, group := range groupArray {
+		if group.CreatorId == int(chatId) {
+			index = i
+			break
+		}
+	}
+	groupArray[index].Title = title
+	// Отправка сообщения
+	msg := tgbotapi.NewMessage(chatId, "Введите описание")
+	_, err := bot.Send(msg)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func getGroupDescriptionAndCreate(bot *tgbotapi.BotAPI,chatId int64, description string) {
+	// Получение группы из массива
+	index := 0
+	for i, group := range groupArray {
+		if group.CreatorId == int(chatId) {
+			index = i
+			break
+		}
+	}
+	groupArray[index].Description = description
+	// Формирование тела запроса
+	body, err := json.Marshal(groupArray[index])
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Формирование запроса
+	idStr := strconv.Itoa(int(chatId))
+	url := "http://jtdi.ru/" + idStr + "/group/create"
+	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	// Установка куки
+	if tokensMap[chatId].Access == nil || tokensMap[chatId].Refresh == nil {
+		msg := tgbotapi.NewMessage(chatId, "Авторизуйтесь!")
+		msg.ReplyMarkup = startKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return
+	}
+	req.AddCookie(tokensMap[chatId].Access)
+	req.AddCookie(tokensMap[chatId].Refresh)
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	body, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var result models.JsonGroup
+	json.NewDecoder(bytes.NewBuffer(body)).Decode(&result)
+	groupArray[index].Id = result.Group.Id
+
+	if resp.StatusCode == 200 {
+		// Отправка сообщения с новой клавиатурой
+		msg := tgbotapi.NewMessage(chatId, "Группа создана\nВыберите действие для группы")
+		msg.ReplyMarkup = groupMenuKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		// В случе ошибки предложить еще раз
+		msg := tgbotapi.NewMessage(chatId, string(body))
+		_, _ = bot.Send(msg)
+		msg = tgbotapi.NewMessage(chatId, "Эхх не получилось... Попробуйте еще раз!!!")
+		msg.ReplyMarkup = groupCreateKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 }
