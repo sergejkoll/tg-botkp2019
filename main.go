@@ -122,6 +122,29 @@ func main() {
 				if !status {
 					caseState[update.Message.Chat.ID] = TASK_MENU
 				}
+			//	Получение новой почты при обновлении пользователя
+			} else if caseState[update.Message.Chat.ID] == UPDATE_USER_EMAIL {
+				updateEmail(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = USER_MENU
+			//	Получение и обновление логина пользователя
+			} else if caseState[update.Message.Chat.ID] == UPDATE_USER_LOGIN {
+				updateLogin(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = USER_MENU
+			//	Получение и обновление имени пользователя
+			} else if caseState[update.Message.Chat.ID] == UPDATE_USER_FULLNAME {
+				updateFullname(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = USER_MENU
+			//	Получение и обновление пароля пользователя
+			} else if caseState[update.Message.Chat.ID] == UPDATE_USER_PASS {
+				updatePass(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = USER_MENU
+			//	Получение заголовка группы и отправка сообщения о описании
+			} else if caseState[update.Message.Chat.ID] == GROUP_SEND_TITLE {
+				getGroupTitle(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = GROUP_SEND_DESCRIPTION
+			} else if caseState[update.Message.Chat.ID] == GROUP_SEND_DESCRIPTION {
+				getGroupDescriptionAndCreate(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = GROUP_MENU
 			}
 		}
 
@@ -159,10 +182,60 @@ func main() {
 			case "scope":
 				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "Выбирите действие для интервала")
 				msg.ReplyMarkup = taskMenuKeyboard
+			case "user":
+				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "Выберите действие для пользователя")
+				msg.ReplyMarkup = userMenuKeyboard
 				_, err = bot.Send(msg)
 				if err != nil {
 					log.Fatal(err)
 				}
+				caseState[update.CallbackQuery.Message.Chat.ID] = USER_MENU
+			case "get_user":
+				GetUser(bot, update.CallbackQuery.Message.Chat.ID)
+				caseState[update.CallbackQuery.Message.Chat.ID] = USER_MENU
+			case "delete_user":
+				status := DeleteUser(bot, update.CallbackQuery.Message.Chat.ID)
+				if !status {
+					caseState[update.CallbackQuery.Message.Chat.ID] = USER_MENU
+				}
+				caseState[update.CallbackQuery.Message.Chat.ID] = START
+			case "update_user":
+				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "Выберите что хотите обновить у пользователя")
+				msg.ReplyMarkup = updateUserKeyboard
+				_, err = bot.Send(msg)
+				if err != nil {
+					log.Fatal(err)
+				}
+			case "update_email":
+				getNewUserEmail(bot, update.CallbackQuery.Message.Chat.ID)
+				caseState[update.CallbackQuery.Message.Chat.ID] = UPDATE_USER_EMAIL
+			case "update_login":
+				getNewUserLogin(bot, update.CallbackQuery.Message.Chat.ID)
+				caseState[update.CallbackQuery.Message.Chat.ID] = UPDATE_USER_LOGIN
+			case "update_name":
+				getNewUserFullname(bot, update.CallbackQuery.Message.Chat.ID)
+				caseState[update.CallbackQuery.Message.Chat.ID] = UPDATE_USER_FULLNAME
+			case "update_pass":
+				getNewUserPass(bot, update.CallbackQuery.Message.Chat.ID)
+				caseState[update.CallbackQuery.Message.Chat.ID] = UPDATE_USER_PASS
+			case "group":
+				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "Выберите действие для группы")
+				msg.ReplyMarkup = groupMenuKeyboard
+				_, err = bot.Send(msg)
+				if err != nil {
+					log.Fatal(err)
+				}
+			case "create_group":
+				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "Выберите что именно вы хотите создать\n" +
+					"(Чтобы создать любой элемент в группе, необходимо создать группу)")
+				msg.ReplyMarkup = groupCreateKeyboard
+				_, err = bot.Send(msg)
+				if err != nil {
+					log.Fatal(err)
+				}
+			case "create_groups":
+				getIdAndGroupTitle(bot, update.CallbackQuery.Message.Chat.ID)
+				caseState[update.CallbackQuery.Message.Chat.ID] = GROUP_SEND_TITLE
 			}
 
 		}
