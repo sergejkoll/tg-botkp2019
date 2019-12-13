@@ -11,7 +11,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/tg-botkp2019/models"
+	"github.com/sergejkoll/tg-botkp2019/models"
 )
 
 var userArray []models.User
@@ -2174,3 +2174,4 @@ func getTasksInOpenScope(bot *tgbotapi.BotAPI, chatId int64) {
 	msg.ReplyMarkup = mainMenuKeyboard
 	bot.Send(msg)
 }
+

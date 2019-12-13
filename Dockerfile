@@ -16,4 +16,3 @@ RUN go build *.go
 
 # Запустим приложение
 CMD go run *.go
-
