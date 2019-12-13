@@ -145,6 +145,8 @@ func main() {
 			} else if caseState[update.Message.Chat.ID] == GROUP_SEND_DESCRIPTION {
 				getGroupDescriptionAndCreate(bot, update.Message.Chat.ID, update.Message.Text)
 				caseState[update.Message.Chat.ID] = GROUP_MENU
+			} else if caseState[update.Message.Chat.ID] == ASKED_GROUP_ID {
+				//
 			}
 		}
 
@@ -181,7 +183,15 @@ func main() {
 				caseState[update.CallbackQuery.Message.Chat.ID] = UPDATE_APPROVED
 			case "scope":
 				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "Выбирите действие для интервала")
-				msg.ReplyMarkup = taskMenuKeyboard
+				msg.ReplyMarkup = scopeMenuKeyboard
+				_, err = bot.Send(msg)
+				if err != nil {
+					log.Fatal(err)
+				}
+				caseState[update.CallbackQuery.Message.Chat.ID] = SCOPE_MENU
+			case "create_scope":
+				AskGroupId(bot, update.CallbackQuery.Message.Chat.ID)
+				caseState[update.CallbackQuery.Message.Chat.ID] = ASKED_GROUP_ID
 			case "user":
 				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "Выберите действие для пользователя")
 				msg.ReplyMarkup = userMenuKeyboard

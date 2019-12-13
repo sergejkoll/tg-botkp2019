@@ -40,7 +40,7 @@ var taskMenuKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 var scopeMenuKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 	tgbotapi.NewInlineKeyboardRow(
 		tgbotapi.NewInlineKeyboardButtonData("Создать", "create_scope"),
-		tgbotapi.NewInlineKeyboardButtonData("Удалить", "get_scope"),
+		tgbotapi.NewInlineKeyboardButtonData("Удалить", "delete_scope"),
 	),
 	tgbotapi.NewInlineKeyboardRow(
 		tgbotapi.NewInlineKeyboardButtonData("Редактировать", "update_scope"),

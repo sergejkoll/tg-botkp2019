@@ -17,6 +17,7 @@ import (
 var userArray []models.User
 var taskArray []models.Task
 var groupArray []models.Group
+var scopeArray []models.Scope
 
 var (
 	tokensMap = make(map[int64]models.Tokens)
@@ -1234,3 +1235,318 @@ func getGroupDescriptionAndCreate(bot *tgbotapi.BotAPI,chatId int64, description
 		}
 	}
 }
+
+func AskGroupId(bot *tgbotapi.BotAPI, chatId int64) bool {
+	index := 0
+	for i, usr := range scopeArray {
+		if usr.Id == int(chatId) {
+			index = i
+			break
+		}
+	}
+
+	msg := tgbotapi.NewMessage(chatId, "Список групп: ")
+	_, err := bot.Send(msg)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	idStr := strconv.Itoa(int(chatId))
+	url := "http://jtdi.ru/" + idStr + "/groups" + strconv.Itoa(groupArray[index].Id)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return false
+	}
+	// Установка куки
+	if tokensMap[chatId].Access == nil || tokensMap[chatId].Refresh == nil {
+		msg := tgbotapi.NewMessage(chatId, "Авторизуйтесь!")
+		msg.ReplyMarkup = startKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	req.AddCookie(tokensMap[chatId].Access)
+	req.AddCookie(tokensMap[chatId].Refresh)
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+
+	if resp.StatusCode == 200 {
+		var groups []models.JsonGroup
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		json.NewDecoder(bytes.NewBuffer(body)).Decode(&groups)
+
+		flag := false
+		for _, value := range groups {
+			msg := fmt.Sprintf("Группа #%v\nНазвание: %s\n Описание: %s",
+				value.Group.Id, value.Group.Title, value.Group.Description)
+			flag = true
+			_, err := bot.Send(tgbotapi.NewMessage(chatId, msg))
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		if flag {
+			msg = tgbotapi.NewMessage(chatId, "Выберите номер группы с которой хотите создать интервал: ")
+			_, err = bot.Send(msg)
+			if err != nil {
+				log.Fatal(err)
+			}
+			return true
+		}
+		msg = tgbotapi.NewMessage(chatId, "Похоже у Вас нет созданных групп, желаете создать новую?")
+		msg.ReplyMarkup = groupCreateKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return false
+
+	}
+	msg = tgbotapi.NewMessage(chatId, "Выберите правильный номер группы с которой хотите создать интервал!")
+	_, err = bot.Send(msg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return false
+
+}
+
+func GetGroupId(bot *tgbotapi.BotAPI, chatId int64, groupdId string) bool {
+	currentScope := models.Scope{}
+	intId, err := strconv.Atoi(groupdId)
+	if err != nil {
+		return false
+	}
+	currentScope.GroupId = intId
+	currentScope.CreatorId = int(chatId)
+
+	scopeArray = append(scopeArray, currentScope)
+	msg := tgbotapi.NewMessage(chatId, "Введите начало временного интервала в формате dd-mm-yyyy hh:mm")
+	_, err = bot.Send(msg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return true
+}
+
+func GetBeginInerval(bot *tgbotapi.BotAPI, chatId int64, interval string) bool {
+	t, err := time.Parse("02-01-2006 15:04:05", interval)
+	if err != nil {
+		return false
+	}
+
+	index := 0
+	for i, usr := range scopeArray {
+		if usr.Id == int(chatId) {
+			index = i
+			break
+		}
+	}
+
+	scopeArray[index].BeginInterval = t.Unix()
+
+	msg := tgbotapi.NewMessage(chatId, "Введите конец временного интервала в формате dd-mm-yyyy hh:mm")
+	_, err = bot.Send(msg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return true
+}
+
+// 1 - 500  2 - 401 3 - 200
+func GetEndInterval(bot *tgbotapi.BotAPI, chatId int64, interval string) int {
+	t, err := time.Parse("02-01-2006 15:04:05", interval)
+	if err != nil {
+		return 500
+	}
+
+	index := 0
+	for i, usr := range scopeArray {
+		if usr.Id == int(chatId) {
+			index = i
+			break
+		}
+	}
+
+	scopeArray[index].EndInterval = t.Unix()
+
+	body, err := json.Marshal(groupArray[index])
+	if err != nil {
+		return 401
+	}
+
+	// Формирование запроса
+	idStr := strconv.Itoa(int(chatId))
+	url := "http://jtdi.ru/" + idStr + "/group/" + strconv.Itoa(groupArray[index].Id)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	if err != nil {
+		return 500
+	}
+	// Установка куки
+	if tokensMap[chatId].Access == nil || tokensMap[chatId].Refresh == nil {
+		msg := tgbotapi.NewMessage(chatId, "Авторизуйтесь!")
+		msg.ReplyMarkup = startKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		return 401
+	}
+	req.AddCookie(tokensMap[chatId].Access)
+	req.AddCookie(tokensMap[chatId].Refresh)
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return 500
+	}
+
+	if resp.StatusCode == 200 {
+		msg := tgbotapi.NewMessage(chatId, "Интервал создан!")
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return 200
+	} else {
+		return 500
+	}
+}
+
+func GetDeleteIdScope(bot *tgbotapi.BotAPI, chatId int64) bool {
+	msg := tgbotapi.NewMessage(chatId, "Список Ваших интервалов, выберите один, чтобы удалить его")
+	_, err := bot.Send(msg)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	idStr := strconv.Itoa(int(chatId))
+	url := "http://jtdi.ru/" + idStr + "/scopes"
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return false
+	}
+	// Установка куки
+	if tokensMap[chatId].Access == nil || tokensMap[chatId].Refresh == nil {
+		msg := tgbotapi.NewMessage(chatId, "Авторизуйтесь!")
+		msg.ReplyMarkup = startKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	req.AddCookie(tokensMap[chatId].Access)
+	req.AddCookie(tokensMap[chatId].Refresh)
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+
+	if resp.StatusCode == 200 {
+		var scopes []models.JsonScope
+
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		json.NewDecoder(bytes.NewBuffer(body)).Decode(&scopes)
+
+
+		flag := false
+		for _, value := range scopes {
+			var groupName string
+			for _, group := range groupArray {
+				if group.Id == value.Scope.GroupId {
+					groupName = group.Title
+				}
+			}
+			begin := time.Unix(value.Scope.BeginInterval, 0).Format("02-01-2006 15:04")
+			end := time.Unix(value.Scope.EndInterval, 0).Format("02-01-2006 15:04")
+
+			msg := fmt.Sprintf("Интервал #%v\nНазвание: %s\n Длительность: %v:%v",
+				value.Scope.Id, groupName, begin, end)
+			flag = true
+			_, err := bot.Send(tgbotapi.NewMessage(chatId, msg))
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		if flag {
+			msg = tgbotapi.NewMessage(chatId, "Выберите номер интервала который хотите удалить: ")
+			_, err = bot.Send(msg)
+			if err != nil {
+				log.Fatal(err)
+			}
+			return true
+		}
+		msg = tgbotapi.NewMessage(chatId, "Похоже у Вас нет созданных интервалов, желаете создать новый?")
+		msg.ReplyMarkup = scopeMenuKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return false
+
+	}
+	msg = tgbotapi.NewMessage(chatId, "Выберите правильный номер!")
+	_, err = bot.Send(msg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	return false
+}
+
+func DeleteScope(bot *tgbotapi.BotAPI, chatId int64, scopeId string) bool {
+	idStr := strconv.FormatInt(chatId, 10)
+	url := "http://jtdi.ru/" + idStr + "/scope" + scopeId
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return false
+	}
+	// Установка куки
+	if tokensMap[chatId].Access == nil || tokensMap[chatId].Refresh == nil {
+		msg := tgbotapi.NewMessage(chatId, "Авторизуйтесь!")
+		msg.ReplyMarkup = startKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	req.AddCookie(tokensMap[chatId].Access)
+	req.AddCookie(tokensMap[chatId].Refresh)
+
+	client := http.Client{}
+	resp, err := client.Do(req)
+
+	if resp.StatusCode == 200 {
+		// Отправка сообщения с новой клавиатурой
+		msg := tgbotapi.NewMessage(chatId, "Интервал удален!")
+		msg.ReplyMarkup = groupMenuKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+		return true
+	} else {
+		// В случе ошибки предложить еще раз
+		msg := tgbotapi.NewMessage(chatId, "Эхх не получилось... Попробуйте еще раз!!!")
+		msg.ReplyMarkup = scopeMenuKeyboard
+		_, err = bot.Send(msg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	return false
+}
+

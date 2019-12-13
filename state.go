@@ -26,4 +26,6 @@ var (
 	GROUP_SEND_TITLE      = 22
 	GROUP_SEND_DESCRIPTION = 23
 	GROUP_MENU            = 24
+	SCOPE_MENU            = 32
+	ASKED_GROUP_ID = 33
 )

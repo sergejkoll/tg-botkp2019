@@ -7,3 +7,9 @@ type Scope struct {
 	BeginInterval int64 `json:"begin_interval"`
 	EndInterval   int64 `json:"end_interval"`
 }
+
+type JsonScope struct {
+	Message string `json:"message"`
+	Status string `json:"status"`
+	Scope Scope `json:"scope"`
+}
