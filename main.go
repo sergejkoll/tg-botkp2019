@@ -32,6 +32,10 @@ func main() {
 
 	for update := range updates {
 		if update.Message != nil {
+			if update.Message.Text == "чо делать" {
+				getTasksInOpenScope(bot, update.Message.Chat.ID)
+				caseState[update.Message.Chat.ID] = 100
+			}
 			switch update.Message.Command() {
 			case "start":
 				msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Привет. Я телеграм-бот. Войдите или зарегистрируйтесь")
@@ -165,9 +169,46 @@ func main() {
 			} else if caseState[update.Message.Chat.ID] == GROUP_SEND_DESC_ID {
 				getUpdateDescGroup(bot, update.Message.Chat.ID, update.Message.Text)
 				caseState[update.Message.Chat.ID] = GROUP_SEND_NEW_DESC
+			//	Получение нового описания и отправка запроса
 			} else if caseState[update.Message.Chat.ID] == GROUP_SEND_NEW_DESC {
 				updateGroupDesc(bot, update.Message.Chat.ID, update.Message.Text)
 				caseState[update.Message.Chat.ID] = GROUP_MENU
+			} else if caseState[update.Message.Chat.ID] == ASKED_GROUP_ID {
+				GetGroupId(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = ASKED_BEGIN_INTERVAL
+			} else if caseState[update.Message.Chat.ID] == ASKED_BEGIN_INTERVAL {
+				GetBeginInterval(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = ASKED_END_INTERVAL
+			} else if caseState[update.Message.Chat.ID] == ASKED_END_INTERVAL {
+				statusCode := GetEndInterval(bot, update.Message.Chat.ID, update.Message.Text)
+				if statusCode != 200 {
+					caseState[update.Message.Chat.ID] = START
+				}
+				caseState[update.Message.Chat.ID] = SCOPE_MENU
+			} else if caseState[update.Message.Chat.ID] == GET_DELETE_SCOPE {
+				DeleteScope(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = SCOPE_MENU
+			} else if caseState[update.Message.Chat.ID] == UPDATE_BEGIN {
+				updateBeginScope(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = SCOPE_MENU
+			} else if caseState[update.Message.Chat.ID] == GET_SCOPE_ID {
+				getScopeId(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = UPDATE_BEGIN
+			} else if caseState[update.Message.Chat.ID] == GET_SCOPE_ID_FOR_END {
+				getScopeIdForEnd(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = UPDATE_END
+			} else if caseState[update.Message.Chat.ID] == UPDATE_END {
+				updateEndScope(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = SCOPE_MENU
+			} else if caseState[update.Message.Chat.ID] == GET_SCOPE_FOR_TASK {
+				getScopeForTask(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = GET_TASK_FOR_SCOPE
+			} else if caseState[update.Message.Chat.ID] == GET_TASK_FOR_SCOPE {
+				addTaskInScopeFunc(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = SCOPE_MENU
+			} else if caseState[update.Message.Chat.ID] == GET_SCOPE_FOR_SMART {
+				getSmartTasks(bot, update.Message.Chat.ID, update.Message.Text)
+				caseState[update.Message.Chat.ID] = SCOPE_MENU
 			}
 		}
 
@@ -204,7 +245,15 @@ func main() {
 				caseState[update.CallbackQuery.Message.Chat.ID] = UPDATE_APPROVED
 			case "scope":
 				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "Выбирите действие для интервала")
-				msg.ReplyMarkup = taskMenuKeyboard
+				msg.ReplyMarkup = scopeMenuKeyboard
+				_, err = bot.Send(msg)
+				if err != nil {
+					log.Fatal(err)
+				}
+				caseState[update.CallbackQuery.Message.Chat.ID] = SCOPE_MENU
+			case "create_scope":
+				AskGroupId(bot, update.CallbackQuery.Message.Chat.ID)
+				caseState[update.CallbackQuery.Message.Chat.ID] = ASKED_GROUP_ID
 			case "user":
 				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "Выберите действие для пользователя")
 				msg.ReplyMarkup = userMenuKeyboard
@@ -282,6 +331,35 @@ func main() {
 			case "update_group_description":
 				getIdAndGroupId(bot, update.CallbackQuery.Message.Chat.ID)
 				caseState[update.CallbackQuery.Message.Chat.ID] = GROUP_SEND_DESC_ID
+			case "get_allScopes":
+				getScopes(bot, update.CallbackQuery.Message.Chat.ID)
+				caseState[update.CallbackQuery.Message.Chat.ID] = SCOPE_MENU
+			case "delete_scope":
+				status := GetDeleteIdScope(bot, update.CallbackQuery.Message.Chat.ID)
+				if !status {
+					caseState[update.CallbackQuery.Message.Chat.ID] = SCOPE_MENU
+				}
+				caseState[update.CallbackQuery.Message.Chat.ID] = GET_DELETE_SCOPE
+			case "update_scope":
+				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "Выберите что Вы хотите обновить")
+				msg.ReplyMarkup = scopeUpdateKeyboard
+				bot.Send(msg)
+			case "update_begin":
+				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "Введите номер интервала")
+				bot.Send(msg)
+				caseState[update.CallbackQuery.Message.Chat.ID] = GET_SCOPE_ID
+			case "update_end":
+				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "Введите номер интервала")
+				bot.Send(msg)
+				caseState[update.CallbackQuery.Message.Chat.ID] = GET_SCOPE_ID_FOR_END
+			case "add_task_in_scope":
+				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "Введите номер интервала")
+				bot.Send(msg)
+				caseState[update.CallbackQuery.Message.Chat.ID] = GET_SCOPE_FOR_TASK
+			case "iftellect":
+				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, "Введите номер интервала который хотите заполнить задачами")
+				bot.Send(msg)
+				caseState[update.CallbackQuery.Message.Chat.ID] = GET_SCOPE_FOR_SMART
 			}
 		}
 	}

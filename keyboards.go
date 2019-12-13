@@ -40,16 +40,21 @@ var taskMenuKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 var scopeMenuKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 	tgbotapi.NewInlineKeyboardRow(
 		tgbotapi.NewInlineKeyboardButtonData("Создать", "create_scope"),
-		tgbotapi.NewInlineKeyboardButtonData("Удалить", "get_scope"),
-	),
-	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("Редактировать", "update_scope"),
 		tgbotapi.NewInlineKeyboardButtonData("Показать все", "get_allScopes"),
 	),
 	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("УМНЫЙ АЛГОРИТМ", "iftellect"),
+		tgbotapi.NewInlineKeyboardButtonData("Обновить", "update_scope"),
+		tgbotapi.NewInlineKeyboardButtonData("Удалить", "delete_scope"),
+	),
+	tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData("Заполнить интервал", "iftellect"),
+		tgbotapi.NewInlineKeyboardButtonData("Добавить задачу", "add_task_in_scope"),
+	),
+	tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData("меню", "menu"),
 	),
 )
+
 var createTaskMenuKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 	tgbotapi.NewInlineKeyboardRow(
 		tgbotapi.NewInlineKeyboardButtonData("Обновить задачу", "update_task"),
@@ -74,7 +79,7 @@ var userMenuKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardButtonData("удалить", "delete_user"),
 	),
 	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("Меню", "menu"),
+		tgbotapi.NewInlineKeyboardButtonData("меню", "menu"),
 	),
 )
 
@@ -130,5 +135,14 @@ var groupCreateKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 	),
 	tgbotapi.NewInlineKeyboardRow(
 		tgbotapi.NewInlineKeyboardButtonData("назад", "group"),
+	),
+)
+
+var scopeUpdateKeyboard = tgbotapi.NewInlineKeyboardMarkup(
+	tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData("Обновить начало", "update_begin"),
+	),
+	tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData("Обновоить конец", "update_end"),
 	),
 )
