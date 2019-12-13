@@ -33,8 +33,3 @@ type JsonTask struct {
 	Task Task `json:"task"`
 	Labels []Label `json:"task_labels"`
 }
-
-type AddTaskInScope struct {
-	scopeId int
-	taskId  int
-}
