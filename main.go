@@ -35,6 +35,12 @@ func main() {
 			if update.Message.Text == "чо делать" {
 				getTasksInOpenScope(bot, update.Message.Chat.ID)
 				caseState[update.Message.Chat.ID] = 100
+			} else if update.Message.Text == "что делать" {
+				getTasksInOpenScope(bot, update.Message.Chat.ID)
+				caseState[update.Message.Chat.ID] = 100
+			} else if update.Message.Text == "Что делать" {
+				getTasksInOpenScope(bot, update.Message.Chat.ID)
+				caseState[update.Message.Chat.ID] = 100
 			}
 			switch update.Message.Command() {
 			case "start":

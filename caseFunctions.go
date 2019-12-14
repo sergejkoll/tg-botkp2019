@@ -219,11 +219,20 @@ func getUserIdForLogin(bot *tgbotapi.BotAPI, id int64) {
 //
 // ЗАДАЧИ
 //
+
 func getUserIdForTask(bot *tgbotapi.BotAPI, id int64) {
 	currentTask := models.Task{
 		CreatorId: int(id),
 	}
 	taskArray = append(taskArray, currentTask)
+	index := 0
+	for i, task := range taskArray {
+		if task.CreatorId == int(id) {
+			index = i
+			break
+		}
+	}
+	taskArray[index].GroupId = 0
 	msg := tgbotapi.NewMessage(id, "Введите название задачи")
 	_, err := bot.Send(msg)
 	if err != nil {
@@ -318,7 +327,7 @@ func getTaskPriority(bot *tgbotapi.BotAPI, chatId int64, taskPriority string) (s
 		log.Fatal(err)
 	}
 	// Формирование запроса
-	log.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+	log.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>.")
 	log.Println(taskArray[index])
 	idStr := strconv.Itoa(int(chatId))
 	url := "http://jtdi.ru/" + idStr + "/task/create"
@@ -1269,6 +1278,8 @@ func getGroupId(bot *tgbotapi.BotAPI,chatId int64, groupIdStr string) {
 		CreatorId: int(chatId),
 		GroupId: groupId,
 	}
+	log.Println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+	log.Println(currentTask)
 	taskArray = append(taskArray, currentTask)
 	msg := tgbotapi.NewMessage(chatId, "Введите название задачи")
 	_, err = bot.Send(msg)
@@ -2170,7 +2181,7 @@ func getTasksInOpenScope(bot *tgbotapi.BotAPI, chatId int64) {
 			log.Fatal(err)
 		}
 	}
-	msg := tgbotapi.NewMessage(chatId, "Выберите объект с которым хоитет продолжить работу")
+	msg := tgbotapi.NewMessage(chatId, "Выберите объект с которым хотите продолжить работу")
 	msg.ReplyMarkup = mainMenuKeyboard
 	bot.Send(msg)
 }
